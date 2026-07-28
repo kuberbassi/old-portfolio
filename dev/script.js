@@ -140,8 +140,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
+    // Global fallback handler for broken card images
+    window.handleCardImageError = function(img, title) {
+        const wrapper = img.parentElement;
+        if (!wrapper) return;
+        wrapper.innerHTML = `
+            <div class="card-fallback-banner">
+                <i class="fas fa-code card-fallback-icon"></i>
+                <span class="card-fallback-title">${title}</span>
+            </div>
+        `;
+    };
+
     async function renderProjects() {
         const projectContainer = document.querySelector('.projects-grid');
+        const viewAllContainer = document.getElementById('view-all-container');
         if (!projectContainer) return;
 
         const defaultProjects = [
@@ -175,21 +188,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         ];
 
-        let projectsToRender = defaultProjects;
+        let allProjects = defaultProjects;
 
         try {
-            const res = await fetch('https://api.github.com/users/kuberbassi/repos?sort=updated&per_page=6');
+            const res = await fetch('https://api.github.com/users/kuberbassi/repos?sort=updated&per_page=100');
             if (res.ok) {
                 const repos = await res.json();
                 if (Array.isArray(repos) && repos.length > 0) {
-                    projectsToRender = repos.filter(r => !r.fork).map(r => ({
-                        title: r.name,
-                        description: r.description || 'Open source software project crafted on GitHub.',
-                        image: `https://opengraph.githubassets.com/1/kuberbassi/${r.name}`,
-                        link: r.homepage || r.html_url,
-                        github: r.html_url
-                    }));
-                    if (projectsToRender.length === 0) projectsToRender = defaultProjects;
+                    allProjects = repos.filter(r => !r.fork).map(r => {
+                        const hasLiveUrl = r.homepage && r.homepage.trim() !== '' && r.homepage.startsWith('http');
+                        const previewImage = hasLiveUrl
+                            ? `https://api.microlink.io/?url=${encodeURIComponent(r.homepage)}&embed=image.url`
+                            : `https://opengraph.githubassets.com/1/kuberbassi/${r.name}`;
+
+                        return {
+                            title: r.name,
+                            description: r.description || 'Open source software project crafted on GitHub.',
+                            image: previewImage,
+                            link: hasLiveUrl ? r.homepage : r.html_url,
+                            github: r.html_url
+                        };
+                    });
+                    if (allProjects.length === 0) allProjects = defaultProjects;
                 }
             }
         } catch (e) {
@@ -197,34 +217,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         projectContainer.innerHTML = '';
+        if (viewAllContainer) viewAllContainer.innerHTML = '';
 
-        projectsToRender.forEach((project, index) => {
-            const githubLink = project.github
-                ? `<a href="${project.github}" target="_blank" rel="noopener noreferrer" class="card-link"><i class="fab fa-github"></i> Code</a>`
-                : '';
-            const fallbackSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="%23161b22"/><text x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%233b82f6" font-family="sans-serif" font-size="24" font-weight="bold">${encodeURIComponent(project.title)}</text></svg>`;
+        let displayedCount = 0;
+        const BATCH_SIZE = 6;
 
-            const cardHTML = `
-                <article class="project-card reveal-fade-up">
-                    <div class="card-image-wrapper">
-                        <img src="${project.image}" alt="${project.title}" class="card-image" loading="lazy" onerror="this.onerror=null;this.src='${fallbackSvg}';">
-                    </div>
-                    <div class="card-content">
-                        <span class="card-number">0${index + 1}</span>
-                        <h3 class="card-title">${project.title}</h3>
-                        <p class="card-description">${project.description}</p>
-                        <div class="card-links">
-                            <a href="${project.link}" target="_blank" rel="noopener noreferrer" class="card-link"><i class="fas fa-external-link-alt"></i> Live Site</a>
-                            ${githubLink}
+        function appendBatch() {
+            const batch = allProjects.slice(displayedCount, displayedCount + BATCH_SIZE);
+            batch.forEach((project, i) => {
+                const globalIndex = displayedCount + i + 1;
+                const githubLink = project.github
+                    ? `<a href="${project.github}" target="_blank" rel="noopener noreferrer" class="card-link"><i class="fab fa-github"></i> Code</a>`
+                    : '';
+                const escapedTitle = project.title.replace(/'/g, "\\'");
+
+                const cardHTML = `
+                    <article class="project-card reveal-fade-up">
+                        <div class="card-image-wrapper">
+                            <img src="${project.image}" alt="${project.title}" class="card-image" loading="lazy" onerror="window.handleCardImageError(this, '${escapedTitle}');">
                         </div>
-                    </div>
-                </article>
-            `;
-            projectContainer.innerHTML += cardHTML;
-        });
+                        <div class="card-content">
+                            <span class="card-number">${globalIndex < 10 ? '0' + globalIndex : globalIndex}</span>
+                            <h3 class="card-title">${project.title}</h3>
+                            <p class="card-description">${project.description}</p>
+                            <div class="card-links">
+                                <a href="${project.link}" target="_blank" rel="noopener noreferrer" class="card-link"><i class="fas fa-external-link-alt"></i> Live Site</a>
+                                ${githubLink}
+                            </div>
+                        </div>
+                    </article>
+                `;
+                projectContainer.insertAdjacentHTML('beforeend', cardHTML);
+            });
 
-        // Initialize hover effects for new cards
-        setupCardHoverEffects();
+            displayedCount += batch.length;
+            setupCardHoverEffects();
+
+            // Handle Load More Button
+            if (viewAllContainer) {
+                if (displayedCount < allProjects.length) {
+                    viewAllContainer.innerHTML = `
+                        <button class="load-more-button" id="load-more-btn">
+                            Load More Projects (${allProjects.length - displayedCount} remaining) <i class="fas fa-chevron-down"></i>
+                        </button>
+                    `;
+                    document.getElementById('load-more-btn').addEventListener('click', appendBatch);
+                } else {
+                    viewAllContainer.innerHTML = '';
+                }
+            }
+        }
+
+        appendBatch();
     }
 
     function setupCardHoverEffects() {

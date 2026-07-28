@@ -1721,5 +1721,64 @@ html {
 }
 
 /* ==========================================================================
+   CARD FALLBACK & LOAD MORE STYLES
+   ========================================================================== */
+.card-fallback-banner {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #1f2937 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    color: var(--color-accent);
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.card-fallback-icon {
+    font-size: 2.2rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.85;
+}
+
+.card-fallback-title {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #f0f6fc;
+}
+
+#view-all-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 3rem;
+}
+
+.load-more-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.9rem 2.2rem;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #ffffff;
+    background-color: var(--color-accent);
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.load-more-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
+    background-color: #2563eb;
+}
+
+/* ==========================================================================
    END OF STYLES
    ========================================================================== */
