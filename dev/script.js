@@ -185,35 +185,89 @@ document.addEventListener('DOMContentLoaded', () => {
                 image: "images/projects/sugandhmaya.png",
                 link: "https://sugandhmaya.com",
                 github: "https://github.com/kuberbassi/sugandhmaya.com"
+            },
+            {
+                title: "Developer Portfolio",
+                description: "Interactive dual-path portfolio site showcasing software system architecture and original musical compositions.",
+                image: "https://opengraph.githubassets.com/1/kuberbassi/old-portfolio",
+                link: "https://kuberbassi.com",
+                github: "https://github.com/kuberbassi/old-portfolio"
+            },
+            {
+                title: "Audio Plugin Suite",
+                description: "Custom DSP audio processing plugins built for modern music production and real-time mixing workflows.",
+                image: "https://opengraph.githubassets.com/1/kuberbassi/audio-plugins",
+                link: "https://github.com/kuberbassi",
+                github: "https://github.com/kuberbassi"
+            },
+            {
+                title: "Automation Workflows",
+                description: "System automation scripts and tools designed for high-efficiency build pipelines and data processing.",
+                image: "https://opengraph.githubassets.com/1/kuberbassi/automation-tools",
+                link: "https://github.com/kuberbassi",
+                github: "https://github.com/kuberbassi"
+            },
+            {
+                title: "Clarity Engine Core",
+                description: "Modular software architecture engine focusing on clean code principles and system optimization.",
+                image: "https://opengraph.githubassets.com/1/kuberbassi/clarity-engine",
+                link: "https://github.com/kuberbassi",
+                github: "https://github.com/kuberbassi"
             }
         ];
 
         let allProjects = defaultProjects;
 
-        try {
-            const res = await fetch('https://api.github.com/users/kuberbassi/repos?sort=updated&per_page=100');
-            if (res.ok) {
-                const repos = await res.json();
-                if (Array.isArray(repos) && repos.length > 0) {
-                    allProjects = repos.filter(r => !r.fork).map(r => {
-                        const hasLiveUrl = r.homepage && r.homepage.trim() !== '' && r.homepage.startsWith('http');
-                        const previewImage = hasLiveUrl
-                            ? `https://api.microlink.io/?url=${encodeURIComponent(r.homepage)}&embed=image.url`
-                            : `https://opengraph.githubassets.com/1/kuberbassi/${r.name}`;
+        // Try reading from LocalStorage Cache first (1 hour TTL)
+        const CACHE_KEY = 'kb_github_repos_v2';
+        const CACHE_TIME_KEY = 'kb_github_repos_time_v2';
+        const ONE_HOUR = 60 * 60 * 1000;
 
-                        return {
-                            title: r.name,
-                            description: r.description || 'Open source software project crafted on GitHub.',
-                            image: previewImage,
-                            link: hasLiveUrl ? r.homepage : r.html_url,
-                            github: r.html_url
-                        };
-                    });
-                    if (allProjects.length === 0) allProjects = defaultProjects;
-                }
+        let cachedProjects = null;
+        try {
+            const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
+            const cachedData = localStorage.getItem(CACHE_KEY);
+            if (cachedTime && cachedData && (Date.now() - parseInt(cachedTime, 10) < ONE_HOUR)) {
+                cachedProjects = JSON.parse(cachedData);
             }
         } catch (e) {
-            console.warn('GitHub API fetch failed, rendering curated projects:', e);
+            console.warn('LocalStorage read failed:', e);
+        }
+
+        if (cachedProjects && Array.isArray(cachedProjects) && cachedProjects.length > 0) {
+            allProjects = cachedProjects;
+        } else {
+            try {
+                const res = await fetch('https://api.github.com/users/kuberbassi/repos?sort=updated&per_page=100');
+                if (res.ok) {
+                    const repos = await res.json();
+                    if (Array.isArray(repos) && repos.length > 0) {
+                        const fetchedProjects = repos.filter(r => !r.fork).map(r => {
+                            const hasLiveUrl = r.homepage && r.homepage.trim() !== '' && r.homepage.startsWith('http');
+                            const previewImage = hasLiveUrl
+                                ? `https://api.microlink.io/?url=${encodeURIComponent(r.homepage)}&embed=image.url`
+                                : `https://opengraph.githubassets.com/1/kuberbassi/${r.name}`;
+
+                            return {
+                                title: r.name,
+                                description: r.description || 'Open source software project crafted on GitHub.',
+                                image: previewImage,
+                                link: hasLiveUrl ? r.homepage : r.html_url,
+                                github: r.html_url
+                            };
+                        });
+                        if (fetchedProjects.length > 0) {
+                            allProjects = fetchedProjects;
+                            try {
+                                localStorage.setItem(CACHE_KEY, JSON.stringify(fetchedProjects));
+                                localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+                            } catch (e) {}
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('GitHub API fetch failed, using curated fallback projects:', e);
+            }
         }
 
         projectContainer.innerHTML = '';
@@ -224,6 +278,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function appendBatch() {
             const batch = allProjects.slice(displayedCount, displayedCount + BATCH_SIZE);
+            const newCardElements = [];
+
             batch.forEach((project, i) => {
                 const globalIndex = displayedCount + i + 1;
                 const githubLink = project.github
@@ -250,8 +306,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 projectContainer.insertAdjacentHTML('beforeend', cardHTML);
             });
 
+            // Target newly added project cards for animation
+            const allCards = projectContainer.querySelectorAll('.project-card');
+            for (let i = displayedCount; i < allCards.length; i++) {
+                newCardElements.push(allCards[i]);
+            }
+
             displayedCount += batch.length;
             setupCardHoverEffects();
+
+            // Trigger GSAP entrance animations & refresh ScrollTrigger
+            if (newCardElements.length > 0 && window.gsap) {
+                gsap.from(newCardElements, {
+                    y: 40,
+                    opacity: 0,
+                    duration: 0.8,
+                    stagger: 0.1,
+                    ease: 'power3.out'
+                });
+                if (window.ScrollTrigger) {
+                    ScrollTrigger.refresh();
+                }
+            }
 
             // Handle Load More Button
             if (viewAllContainer) {
@@ -261,7 +337,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             Load More Projects (${allProjects.length - displayedCount} remaining) <i class="fas fa-chevron-down"></i>
                         </button>
                     `;
-                    document.getElementById('load-more-btn').addEventListener('click', appendBatch);
+                    const loadBtn = document.getElementById('load-more-btn');
+                    if (loadBtn) {
+                        loadBtn.addEventListener('click', appendBatch);
+                    }
                 } else {
                     viewAllContainer.innerHTML = '';
                 }
