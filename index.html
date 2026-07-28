@@ -18,7 +18,7 @@
     <meta property="og:title" content="Kuber Bassi | Developer & Artist">
     <meta property="og:description"
         content="A creative technologist blending code and music. Choose your path: Developer or Artist.">
-    <meta property="og:image" content="https://kuberbassi.com/dev-portfolio/images/og-image.png">
+    <meta property="og:image" content="https://kuberbassi.com/dev/images/og-image.png">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
@@ -26,9 +26,9 @@
     <meta property="twitter:title" content="Kuber Bassi | Developer & Artist">
     <meta property="twitter:description"
         content="A creative technologist blending code and music. Choose your path: Developer or Artist.">
-    <meta property="twitter:image" content="https://kuberbassi.com/dev-portfolio/images/og-image.png">
+    <meta property="twitter:image" content="https://kuberbassi.com/dev/images/og-image.png">
 
-    <link rel="icon" type="image/png" href="/dev-portfolio/images/favicon.png">
+    <link rel="icon" type="image/png" href="./dev/images/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -299,7 +299,7 @@
             }
         }
     </style>
-    <link rel="icon" type="image/png" href="/dev-portfolio/images/favicon.png">
+    <link rel="icon" type="image/png" href="./dev/images/favicon.png">
     <meta name="p:domain_verify" content="bfedaffceb0a4a8c39205f430e366453" />
 </head>
 
@@ -309,7 +309,7 @@
 
         <div class="split-panel dev-panel" data-bg="#0b0b0b">
             <div id="dev-background"></div>
-            <a href="./dev-portfolio/">
+            <a href="./dev/">
                 <h2 class="panel-heading">Developer</h2>
                 <span class="panel-subtext">Technology & Code</span>
             </a>
@@ -317,7 +317,7 @@
 
         <div class="split-panel artist-panel" data-bg="#161616">
             <div id="artist-background"></div>
-            <a href="./music-portfolio/">
+            <a href="./music/">
                 <h2 class="panel-heading">Artist</h2>
                 <span class="panel-subtext">Music & Sound</span>
             </a>
@@ -326,7 +326,7 @@
     </main>
 
     <footer class="landing-footer">
-        &copy; 2025 Kuber Bassi
+        &copy; <span id="footer-year">2025-26</span> Kuber Bassi
     </footer>
 
     <div id="transition-overlay"></div>
@@ -334,6 +334,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Dynamic footer year (2025-26, 2025-27, etc.)
+            const yearEl = document.getElementById('footer-year');
+            if (yearEl) {
+                const yr = new Date().getFullYear();
+                yearEl.textContent = yr > 2025 ? `2025-${String(yr).slice(-2)}` : '2025';
+            }
+
             // A more reliable check for touch vs. mouse-based devices
             const isTouchDevice = !window.matchMedia("(pointer: fine)").matches;
 
@@ -388,34 +395,41 @@
                 } else {
                     // --- MOUSE-INTERACTIVE ANIMATION FOR DESKTOP ---
                     let mouseX = -999, mouseY = -999;
+                    let ticking = false;
+                    const lines = container.querySelectorAll('.dev-grid-line');
+
                     container.addEventListener('mousemove', (e) => {
-                        const rect = container.getBoundingClientRect(); // Recalculate on move for accuracy
+                        const rect = container.getBoundingClientRect();
                         mouseX = e.clientX - rect.left;
                         mouseY = e.clientY - rect.top;
+                        if (!ticking) {
+                            requestAnimationFrame(updateDevGrid);
+                            ticking = true;
+                        }
                     });
                     container.addEventListener('mouseleave', () => {
                         mouseX = -999; mouseY = -999;
+                        if (!ticking) {
+                            requestAnimationFrame(updateDevGrid);
+                            ticking = true;
+                        }
                     });
 
                     function updateDevGrid() {
-                        document.querySelectorAll('.dev-grid-line').forEach(line => {
-                            const linePos = line.classList.contains('vertical') ? parseFloat(line.style.getPropertyValue('--left')) : parseFloat(line.style.getPropertyValue('--top'));
-                            const dist = line.classList.contains('vertical') ? Math.abs(mouseX - linePos) : Math.abs(mouseY - linePos);
+                        const radius = 120;
+                        lines.forEach(line => {
+                            const isVert = line.classList.contains('vertical');
+                            const linePos = parseFloat(isVert ? line.style.getPropertyValue('--left') : line.style.getPropertyValue('--top'));
+                            const dist = isVert ? Math.abs(mouseX - linePos) : Math.abs(mouseY - linePos);
 
                             let intensity = 0;
-                            const radius = 120; // Increased radius for a softer feel
                             if (dist < radius) {
                                 intensity = (radius - dist) / radius;
                             }
-                            gsap.to(line, {
-                                backgroundColor: `rgba(59, 130, 246, ${0.1 + intensity * 0.4})`,
-                                duration: 0.5,
-                                ease: 'power1.out'
-                            });
+                            line.style.backgroundColor = `rgba(59, 130, 246, ${0.1 + intensity * 0.4})`;
                         });
-                        requestAnimationFrame(updateDevGrid);
+                        ticking = false;
                     }
-                    updateDevGrid();
                 }
             }
 

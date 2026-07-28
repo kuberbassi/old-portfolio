@@ -2,6 +2,13 @@ document.addEventListener('DOMContentLoaded', () => {
     gsap.registerPlugin(ScrollTrigger);
     const mainContent = document.getElementById('main-content');
 
+    // --- DYNAMIC FOOTER YEAR ---
+    const yearEl = document.getElementById('footer-year');
+    if (yearEl) {
+        const yr = new Date().getFullYear();
+        yearEl.textContent = yr > 2025 ? `2025-${String(yr).slice(-2)}` : '2025';
+    }
+
     // --- SETUP FUNCTIONS ---
     setupInteractiveText();
     setupMobileNav(); // <-- New function for the mobile menu
@@ -69,15 +76,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function createFloatingSymbols() {
         const symbols = ['{}', '/>', ';', '+', '0', '1', 'Σ', '>', '<', '#', '&', '*', '@', '$', '%'];
         document.querySelectorAll('.symbol-container').forEach(container => {
-            const symbolCount = container.parentElement.id === 'hero' ? 80 : 20;
+            const symbolCount = container.parentElement.id === 'hero' ? 30 : 10;
             for (let i = 0; i < symbolCount; i++) {
                 const span = document.createElement('span');
                 span.classList.add('floating-symbol');
                 span.textContent = symbols[Math.floor(Math.random() * symbols.length)];
                 span.style.top = `${Math.random() * 100}%`;
                 span.style.left = `${Math.random() * 100}%`;
-                span.style.fontSize = `${Math.random() * 16 + 10}px`;
-                span.style.opacity = Math.random() * 0.6 + 0.2;
+                span.style.fontSize = `${Math.random() * 14 + 10}px`;
+                span.style.opacity = Math.random() * 0.5 + 0.2;
                 container.appendChild(span);
             }
         });
@@ -87,16 +94,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const parallaxLayers = {
             '.hero-blob': 25,
             '.hero-graphic': 50,
-            '.floating-symbol': 80
+            '.floating-symbol': 60
         };
+        let ticking = false;
+        let mouseX = 0, mouseY = 0;
+
         window.addEventListener('mousemove', (e) => {
-            let x = (e.clientX / window.innerWidth) - 0.5;
-            let y = (e.clientY / window.innerHeight) - 0.5;
-            for (const layer in parallaxLayers) {
-                if (document.querySelector(layer)) {
-                    const speed = parallaxLayers[layer];
-                    gsap.to(layer, { x: x * speed, y: y * speed, duration: 1, ease: 'power2.out' });
-                }
+            mouseX = (e.clientX / window.innerWidth) - 0.5;
+            mouseY = (e.clientY / window.innerHeight) - 0.5;
+            if (!ticking) {
+                requestAnimationFrame(() => {
+                    for (const layer in parallaxLayers) {
+                        if (document.querySelector(layer)) {
+                            const speed = parallaxLayers[layer];
+                            gsap.to(layer, { x: mouseX * speed, y: mouseY * speed, duration: 1, ease: 'power2.out' });
+                        }
+                    }
+                    ticking = false;
+                });
+                ticking = true;
             }
         });
     }
@@ -124,56 +140,74 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-    function renderProjects() {
-        const projects = [
+    async function renderProjects() {
+        const projectContainer = document.querySelector('.projects-grid');
+        if (!projectContainer) return;
+
+        const defaultProjects = [
             {
                 title: "MCD HRMS",
                 description: "An enterprise-grade HR management system for tracking employee attendance, payroll, and performance metrics.",
                 image: "images/projects/mcd-hrms.png",
                 link: "https://mcd-hrms.web.app",
-                github: "https://github.com/kuberbassi/mcd-hrms",
-                tags: ["Enterprise", "HR Tech", "System"]
+                github: "https://github.com/kuberbassi/mcd-hrms"
             },
             {
                 title: "AcadHub",
                 description: "A comprehensive academic management system dashboard for streamlining educational workflows and student data tracking.",
                 image: "images/projects/acadhub.png",
                 link: "https://acadhub.kuberbassi.com",
-                github: "https://github.com/kuberbassi/acadhub",
-                tags: ["Dashboard", "Management", "Education"]
+                github: "https://github.com/kuberbassi/acadhub"
             },
             {
                 title: "IndiaOnRoaming",
                 description: "A vibrant travel portal showcasing diverse Indian landscapes and simplifying travel bookings with a modern interface.",
                 image: "images/projects/indiaonroaming.png",
                 link: "https://indiaonroaming.com",
-                github: null, // No GitHub link provided
-                tags: ["Travel", "Portal", "UX/UI"]
+                github: "https://github.com/kuberbassi/indiaonroaming"
             },
             {
                 title: "Sugandhmaya",
                 description: "A premium e-commerce platform for a luxury fragrance brand, featuring an elegant design and seamless shopping experience.",
                 image: "images/projects/sugandhmaya.png",
                 link: "https://sugandhmaya.com",
-                github: "https://github.com/kuberbassi/sugandhmaya.com",
-                tags: ["E-commerce", "Luxury", "Design"]
+                github: "https://github.com/kuberbassi/sugandhmaya.com"
             }
         ];
 
-        const projectContainer = document.querySelector('.projects-grid');
-        if (!projectContainer) return;
+        let projectsToRender = defaultProjects;
+
+        try {
+            const res = await fetch('https://api.github.com/users/kuberbassi/repos?sort=updated&per_page=6');
+            if (res.ok) {
+                const repos = await res.json();
+                if (Array.isArray(repos) && repos.length > 0) {
+                    projectsToRender = repos.filter(r => !r.fork).map(r => ({
+                        title: r.name,
+                        description: r.description || 'Open source software project crafted on GitHub.',
+                        image: `https://opengraph.githubassets.com/1/kuberbassi/${r.name}`,
+                        link: r.homepage || r.html_url,
+                        github: r.html_url
+                    }));
+                    if (projectsToRender.length === 0) projectsToRender = defaultProjects;
+                }
+            }
+        } catch (e) {
+            console.warn('GitHub API fetch failed, rendering curated projects:', e);
+        }
 
         projectContainer.innerHTML = '';
 
-        projects.forEach((project, index) => {
+        projectsToRender.forEach((project, index) => {
             const githubLink = project.github
                 ? `<a href="${project.github}" target="_blank" rel="noopener noreferrer" class="card-link"><i class="fab fa-github"></i> Code</a>`
                 : '';
+            const fallbackSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="%23161b22"/><text x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%233b82f6" font-family="sans-serif" font-size="24" font-weight="bold">${encodeURIComponent(project.title)}</text></svg>`;
 
             const cardHTML = `
                 <article class="project-card reveal-fade-up">
                     <div class="card-image-wrapper">
-                        <img src="${project.image}" alt="${project.title}" class="card-image" loading="lazy">
+                        <img src="${project.image}" alt="${project.title}" class="card-image" loading="lazy" onerror="this.onerror=null;this.src='${fallbackSvg}';">
                     </div>
                     <div class="card-content">
                         <span class="card-number">0${index + 1}</span>

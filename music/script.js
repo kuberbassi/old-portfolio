@@ -1,6 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- DYNAMIC FOOTER YEAR ---
+    const yearEl = document.getElementById('footer-year');
+    if (yearEl) {
+        const yr = new Date().getFullYear();
+        yearEl.textContent = yr > 2025 ? `2025-${String(yr).slice(-2)}` : '2025';
+    }
+
     // --- SMOOTH SCROLL SETUP ---
-    const lenis = new Lenis();
+    const lenis = window.lenis = new Lenis();
     function raf(time) {
         lenis.raf(time);
         requestAnimationFrame(raf);
@@ -122,13 +129,15 @@ document.addEventListener('DOMContentLoaded', () => {
             for (let x = 0; x < width + gridSize; x += gridSize) { for (let y = 0; y < height + gridSize; y += gridSize) { points.push(new Point(x, y)); } }
         }
         function animateGrid() {
-            ctx.clearRect(0, 0, width, height);
-            points.forEach(p => {
-                p.update(); ctx.beginPath(); ctx.arc(p.x, p.y, 1, 0, Math.PI * 2);
-                const dx = p.x - mouse.x; const dy = p.y - mouse.y; const dist = Math.sqrt(dx * dx + dy * dy); const intensity = Math.max(0, 1 - dist / 200);
-                if (intensity > 0.5 && Math.random() < 0.1) { ctx.fillStyle = `rgba(255, 0, 51, ${intensity})`; } else { ctx.fillStyle = `rgba(163, 163, 163, ${0.2 + intensity * 0.5})`; }
-                ctx.fill();
-            });
+            if (!document.hidden) {
+                ctx.clearRect(0, 0, width, height);
+                points.forEach(p => {
+                    p.update(); ctx.beginPath(); ctx.arc(p.x, p.y, 1, 0, Math.PI * 2);
+                    const dx = p.x - mouse.x; const dy = p.y - mouse.y; const dist = Math.sqrt(dx * dx + dy * dy); const intensity = Math.max(0, 1 - dist / 200);
+                    if (intensity > 0.5 && Math.random() < 0.1) { ctx.fillStyle = `rgba(255, 0, 51, ${intensity})`; } else { ctx.fillStyle = `rgba(163, 163, 163, ${0.2 + intensity * 0.5})`; }
+                    ctx.fill();
+                });
+            }
             requestAnimationFrame(animateGrid);
         }
         initGrid(); animateGrid(); window.addEventListener('resize', initGrid); window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
